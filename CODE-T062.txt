@@ -1,0 +1,329 @@
+                                         CODE-T062
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Voice-Based Skill Learning</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f0f6ff;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #4a90e2;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    section {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    select, button, input[type="text"] {
+      padding: 10px;
+      margin: 10px 0;
+      width: 100%;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #4a90e2;
+      color: white;
+      cursor: pointer;
+    }
+    .log, .score {
+      background: #e9f1ff;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+    .mic {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .badge {
+      font-size: 24px;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎮 Skill Builder: Learn & Quiz</h1>
+    <p>Use voice or text to learn and test your skills</p>
+  </header>
+
+  <section id="mainMenu">
+    <div class="card">
+      <label><strong>Choose Domain:</strong></label>
+      <select id="domainSelect">
+        <option value="">-- Select Domain --</option>
+        <option value="carpentry">Carpentry</option>
+        <option value="welding">Welding</option>
+        <option value="healthcare">Healthcare</option>
+      </select>
+      <button class="mic" onclick="listenVoice('domain')">🎤</button>
+
+      <label><strong>Choose Mode:</strong></label>
+      <select id="modeSelect">
+        <option value="">-- Select Mode --</option>
+        <option value="learn">Learn</option>
+        <option value="quiz">Quiz</option>
+      </select>
+      <button class="mic" onclick="listenVoice('mode')">🎤</button>
+
+      <button onclick="start()">Start</button>
+    </div>
+  </section>
+
+  <section id="learnSection" style="display:none;">
+    <div class="card">
+      <button onclick="goBack()">⬅ Back</button>
+      <h2>📘 Learn Tools</h2>
+      <label>Select a Tool:</label>
+      <select id="learnToolSelect" onchange="showLearnTool()">
+        <option value="">-- Select Tool --</option>
+      </select>
+      <div id="learnContent"></div>
+      <button onclick="speakCurrentTool()">🔊 Speak</button>
+    </div>
+  </section>
+
+  <section id="quizSection" style="display:none;">
+    <div class="card">
+      <button onclick="goBack()">⬅ Back</button>
+      <h2 id="quizTitle"></h2>
+      <p id="questionDisplay"></p>
+      <input type="text" id="textAnswer" placeholder="Type or speak your answer" />
+      <button onclick="submitAnswer()">✅ Submit</button>
+      <button class="mic" onclick="startListening()">🎤</button>
+      <div class="log" id="voiceLog">Voice input will show here.</div>
+      <div class="score" id="resultLog"></div>
+      <div class="badge" id="badgeDisplay"></div>
+    </div>
+  </section>
+
+  <script>
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+
+    const data = {
+      carpentry: {
+        learn: [
+          { tool: "Hammer", use: "Used to drive nails into wood." },
+          { tool: "Saw", use: "Used to cut wood pieces." },
+          { tool: "Tape Measure", use: "Used to measure length of wood." },
+          { tool: "Clamp", use: "Used to hold wood in place." },
+          { tool: "Chisel", use: "Used to carve or cut wood precisely." },
+          { tool: "Level", use: "Ensures surfaces are perfectly horizontal or vertical." },
+          { tool: "Screwdriver", use: "Used to insert and remove screws." },
+          { tool: "Mallet", use: "Used to tap joints together without damaging wood." },
+          { tool: "Workbench", use: "A sturdy table for woodworking." },
+          { tool: "Square", use: "Checks right angles in carpentry work." },
+          { tool: "Nail Gun", use: "Drives nails quickly with force." },
+          { tool: "Plane", use: "Smooths and flattens wooden surfaces." },
+          { tool: "Drill", use: "Creates holes in wood for screws or bolts." },
+          { tool: "Router", use: "Hollows out an area of wood." },
+          { tool: "Sander", use: "Smooths wood surfaces using abrasive paper." }
+        ],
+        quiz: [
+          { q: "What tool is used to drive nails?", a: "hammer" },
+          { q: "What measures wood length?", a: "tape measure" },
+          { q: "Used to cut wood?", a: "saw" },
+          { q: "Tool to hold wood steady?", a: "clamp" },
+          { q: "Smooths wood?", a: "sander" },
+          { q: "Used for carving?", a: "chisel" },
+          { q: "Ensures level surface?", a: "level" },
+          { q: "Drives nails quickly?", a: "nail gun" },
+          { q: "Tool to insert screws?", a: "screwdriver" },
+          { q: "Tool to flatten wood?", a: "plane" }
+        ]
+      },
+      welding: {
+        learn: [
+          { tool: "Welding Torch", use: "Fuses metal using heat and flame." },
+          { tool: "Welding Helmet", use: "Protects eyes and face from sparks." },
+          { tool: "Electrode", use: "Conducts current to melt metal." },
+          { tool: "Clamp", use: "Holds metal pieces in place." },
+          { tool: "Welding Gloves", use: "Protects hands from heat and sparks." },
+          { tool: "Apron", use: "Protective clothing during welding." },
+          { tool: "Chipping Hammer", use: "Removes slag from welds." },
+          { tool: "Wire Brush", use: "Cleans surfaces before welding." },
+          { tool: "Angle Grinder", use: "Cuts and polishes metal." },
+          { tool: "Measuring Tape", use: "Measures metal pieces." },
+          { tool: "Welding Table", use: "Flat surface to work on metal." },
+          { tool: "Regulator", use: "Controls gas flow." },
+          { tool: "Gas Cylinder", use: "Supplies gas for welding." },
+          { tool: "Safety Glasses", use: "Extra eye protection." },
+          { tool: "Oxy-Acetylene Torch", use: "Welding using oxygen and acetylene gases." }
+        ],
+        quiz: [
+          { q: "Protects eyes while welding?", a: "helmet" },
+          { q: "Melts metal using heat?", a: "torch" },
+          { q: "Holds metal pieces?", a: "clamp" },
+          { q: "Tool to clean welds?", a: "chipping hammer" },
+          { q: "Protects hands?", a: "gloves" },
+          { q: "Cuts metal?", a: "angle grinder" },
+          { q: "Tool to remove slag?", a: "chipping hammer" },
+          { q: "Used to clean metal?", a: "wire brush" },
+          { q: "Controls gas?", a: "regulator" },
+          { q: "Used to weld with gas?", a: "oxy-acetylene torch" }
+        ]
+      },
+      healthcare: {
+        learn: [
+          { tool: "Stethoscope", use: "Listens to heart and lung sounds." },
+          { tool: "Thermometer", use: "Measures body temperature." },
+          { tool: "Syringe", use: "Injects medicine or draws blood." },
+          { tool: "Gloves", use: "Maintains hygiene." },
+          { tool: "Scalpel", use: "Performs precise surgical cuts." },
+          { tool: "Sphygmomanometer", use: "Measures blood pressure." },
+          { tool: "Otoscope", use: "Examines ears." },
+          { tool: "Pulse Oximeter", use: "Measures oxygen levels in blood." },
+          { tool: "Face Mask", use: "Protects against infection." },
+          { tool: "Medical Tray", use: "Holds medical instruments." },
+          { tool: "Blood Pressure Monitor", use: "Automatically measures BP." },
+          { tool: "Tongue Depressor", use: "Holds down tongue for examination." },
+          { tool: "Surgical Scissors", use: "Cuts tissues during surgery." },
+          { tool: "Medical Bed", use: "Supports patient comfortably." },
+          { tool: "Eye Chart", use: "Checks vision clarity." }
+        ],
+        quiz: [
+          { q: "Listens to heartbeats?", a: "stethoscope" },
+          { q: "Checks body temp?", a: "thermometer" },
+          { q: "Used to inject medicine?", a: "syringe" },
+          { q: "Measures BP?", a: "sphygmomanometer" },
+          { q: "Used in surgeries?", a: "scalpel" },
+          { q: "Protective hand wear?", a: "gloves" },
+          { q: "Examines ears?", a: "otoscope" },
+          { q: "Measures oxygen?", a: "pulse oximeter" },
+          { q: "Vision checking tool?", a: "eye chart" },
+          { q: "Used to depress tongue?", a: "tongue depressor" }
+        ]
+      }
+    };
+
+    let domain = "", mode = "", currentQuiz = 0, score = 0, currentToolText = "";
+
+    function listenVoice(type) {
+      recognition.start();
+      recognition.onresult = (e) => {
+        const text = e.results[0][0].transcript.toLowerCase();
+        if (type === "domain") {
+          if (text.includes("carpentry")) domain = "carpentry";
+          else if (text.includes("welding")) domain = "welding";
+          else if (text.includes("healthcare")) domain = "healthcare";
+          document.getElementById("domainSelect").value = domain;
+        } else if (type === "mode") {
+          if (text.includes("quiz")) mode = "quiz";
+          else if (text.includes("learn")) mode = "learn";
+          document.getElementById("modeSelect").value = mode;
+        }
+      };
+    }
+
+    function start() {
+      domain = document.getElementById("domainSelect").value;
+      mode = document.getElementById("modeSelect").value;
+      if (!domain || !mode) return alert("Please select both domain and mode.");
+      document.getElementById("mainMenu").style.display = "none";
+      if (mode === "learn") showLearnOptions();
+      else {
+        currentQuiz = 0;
+        score = 0;
+        showQuiz();
+      }
+    }
+
+    function goBack() {
+      document.getElementById("mainMenu").style.display = "block";
+      document.getElementById("learnSection").style.display = "none";
+      document.getElementById("quizSection").style.display = "none";
+    }
+
+    function showLearnOptions() {
+      const learnTools = data[domain].learn;
+      const select = document.getElementById("learnToolSelect");
+      select.innerHTML = '<option value="">-- Select Tool --</option>';
+      learnTools.forEach((item, i) => {
+        const option = document.createElement("option");
+        option.value = i;
+        option.text = item.tool;
+        select.appendChild(option);
+      });
+      document.getElementById("learnSection").style.display = "block";
+    }
+
+    function showLearnTool() {
+      const index = document.getElementById("learnToolSelect").value;
+      if (index === "") return;
+      const toolInfo = data[domain].learn[index];
+      currentToolText = Tool: ${toolInfo.tool}. Use: ${toolInfo.use};
+      document.getElementById("learnContent").innerHTML = <strong>${toolInfo.tool}</strong>: ${toolInfo.use};
+      speakText(currentToolText);
+    }
+
+    function speakCurrentTool() {
+      speakText(currentToolText);
+    }
+
+    function showQuiz() {
+      document.getElementById("quizSection").style.display = "block";
+      document.getElementById("quizTitle").textContent = 📝 ${domain.charAt(0).toUpperCase() + domain.slice(1)} Quiz;
+      const question = data[domain].quiz[currentQuiz].q;
+      document.getElementById("questionDisplay").textContent = Q${currentQuiz + 1}: ${question};
+      document.getElementById("textAnswer").value = "";
+      speakText(question);
+    }
+
+    function submitAnswer() {
+      const userAns = document.getElementById("textAnswer").value.trim().toLowerCase();
+      const correctAns = data[domain].quiz[currentQuiz].a.toLowerCase();
+      if (userAns.includes(correctAns)) {
+        score++;
+        alert("✅ Correct!");
+      } else {
+        alert(❌ Correct Answer: ${correctAns});
+      }
+      currentQuiz++;
+      if (currentQuiz < data[domain].quiz.length) {
+        showQuiz();
+      } else {
+        document.getElementById("questionDisplay").textContent = "🎉 Quiz Finished!";
+        document.getElementById("resultLog").textContent = Your Score: ${score} / 10;
+        const badge = score >= 9 ? "🥇 Gold" : score >= 8 ? "🥈 Silver" : score >= 7 ? "🥉 Bronze" : "No Badge";
+        document.getElementById("badgeDisplay").textContent = badge;
+      }
+    }
+
+    function startListening() {
+      recognition.start();
+      document.getElementById("voiceLog").textContent = "🎤 Listening...";
+      recognition.onresult = (e) => {
+        const voiceText = e.results[0][0].transcript.toLowerCase();
+        document.getElementById("voiceLog").textContent = You said: ${voiceText};
+        document.getElementById("textAnswer").value = voiceText;
+      };
+    }
+
+    function speakText(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      window.speechSynthesis.speak(utterance);
+    }
+  </script>
+</body>
+</html>
